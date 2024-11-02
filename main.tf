@@ -47,3 +47,39 @@ resource "azurerm_key_vault_secret" "openai_api_key" {
   value        = azurerm_cognitive_account.openai_account.primary_access_key
   key_vault_id = azurerm_key_vault.openai_keyvault.id
 }
+
+
+resource "azurerm_cosmosdb_account" "cosmosdb" {
+  name                = "cosmosdb-genai-vectors"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  offer_type          = "Standard"
+  kind                = "MongoDB"
+  consistency_policy {
+    consistency_level = "Session"
+  }
+  capabilities {
+    name = "EnableVectorSearch"  # Habilita suporte para busca vetorial
+  }
+}
+
+resource "azurerm_cosmosdb_mongo_database" "database" {
+  name                = "genaiVectorDB"
+  account_name        = azurerm_cosmosdb_account.cosmosdb.name
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_cosmosdb_mongo_collection" "collection" {
+  name                = "vectorCollection"
+  database_name       = azurerm_cosmosdb_mongo_database.database.name
+  account_name        = azurerm_cosmosdb_account.cosmosdb.name
+  resource_group_name = azurerm_resource_group.rg.name
+  shard_key           = "vectorId"  # Define uma chave de fragmentação, se necessário
+
+  indexes {
+    keys = ["vector"]
+    options {
+      expire_after_seconds = 0  # Define opções de indexação de vetor
+    }
+  }
+}
